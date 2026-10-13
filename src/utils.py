@@ -1,7 +1,9 @@
+import asyncio
 import json
 import re
 from pathlib import Path
 
+import litellm
 from rank_bm25 import BM25Okapi
 
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -13,8 +15,8 @@ def load_jsonl(path):
         return [json.loads(line) for line in f if line.strip()]
 
 
-def load_system_prompt():
-    return (PROMPTS_DIR / "trace_analyser_system.md").read_text()
+def load_prompt(name):
+    return (PROMPTS_DIR / f"{name}.md").read_text()
 
 
 def load_common():
@@ -60,3 +62,23 @@ def format_analyser_input(record, common):
         f"# Trajectory\n\n<trajectory>\n{trajectory}\n</trajectory>\n\n"
         "Audit this trajectory. Search the knowledge base as needed, then return the JSON report."
     )
+
+
+def item_ids(record):
+    ids = []
+    for m in record["messages"]:
+        if m.get("id"):
+            ids.append(m["id"])
+        ids += [tc["id"] for tc in m.get("tool_calls") or []]
+    return ids
+
+
+async def acompletion(retries=8, **kwargs):
+    for attempt in range(retries):
+        try:
+            return await litellm.acompletion(**kwargs)
+        except (litellm.RateLimitError, litellm.InternalServerError, litellm.APIConnectionError) as e:
+            if attempt == retries - 1:
+                raise
+            print(f"RETRY {type(e).__name__}, attempt {attempt + 1}, waiting {min(60, 5 * 2**attempt)}s")
+            await asyncio.sleep(min(60, 5 * 2**attempt))

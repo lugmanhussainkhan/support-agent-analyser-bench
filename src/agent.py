@@ -1,10 +1,9 @@
 import json
 from typing import Literal
 
-import litellm
 from pydantic import BaseModel, ValidationError
 
-from utils import KnowledgeBase, format_analyser_input, load_common, load_system_prompt
+from utils import KnowledgeBase, acompletion, format_analyser_input, load_common, load_prompt
 
 
 class Error(BaseModel):
@@ -38,7 +37,7 @@ SEARCH_TOOL = {
 }
 
 KB = KnowledgeBase()
-SYSTEM_PROMPT = load_system_prompt()
+SYSTEM_PROMPT = load_prompt("trace_analyser_system")
 COMMON = load_common()
 
 
@@ -58,7 +57,7 @@ async def analyser_agent(record, model, llm_args=None, max_steps=50):
         last_step = step == max_steps - 1
         if last_step:
             messages.append({"role": "user", "content": "Search budget exhausted. Return the final JSON report now."})
-        response = await litellm.acompletion(
+        response = await acompletion(
             model=model,
             messages=messages,
             tools=[SEARCH_TOOL],
