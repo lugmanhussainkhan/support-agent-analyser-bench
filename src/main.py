@@ -15,6 +15,7 @@ async def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--analyser-llm", required=True)
     parser.add_argument("--analyser-llm-args", type=json.loads, default={})
+    parser.add_argument("--no-analyser-response-format", action="store_true", help="For providers that can't combine tools with a response schema")
     parser.add_argument("--evaluator-llm", help="Skip evaluation if not set")
     parser.add_argument("--evaluator-llm-args", type=json.loads, default={})
     parser.add_argument("--max-concurrency", type=int, default=2)
@@ -29,6 +30,7 @@ async def main():
     run = json.loads(output_path.read_text()) if output_path.exists() else {
         "analyser_llm": args.analyser_llm,
         "analyser_llm_args": args.analyser_llm_args,
+        "analyser_response_format": not args.no_analyser_response_format,
         "started_at": timestamp,
         "results": [],
     }
@@ -53,7 +55,7 @@ async def main():
             if rid not in results:
                 start = time.time()
                 try:
-                    results[rid] = {"id": rid, **await analyser_agent(record, args.analyser_llm, args.analyser_llm_args)}
+                    results[rid] = {"id": rid, **await analyser_agent(record, args.analyser_llm, args.analyser_llm_args, response_format=not args.no_analyser_response_format)}
                     print(f"{rid}: {results[rid]['report']['overall_status']} ({results[rid]['steps']} steps, ${results[rid]['cost']:.4f}, {time.time() - start:.0f}s)")
                 except Exception as e:
                     results[rid] = {"id": rid, "error": f"{type(e).__name__}: {e}"}

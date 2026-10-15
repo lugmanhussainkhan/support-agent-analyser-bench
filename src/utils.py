@@ -77,7 +77,7 @@ async def acompletion(retries=8, **kwargs):
     for attempt in range(retries):
         try:
             return await litellm.acompletion(**kwargs)
-        except (litellm.RateLimitError, litellm.InternalServerError, litellm.APIConnectionError) as e:
+        except (litellm.RateLimitError, litellm.InternalServerError, litellm.APIConnectionError, litellm.Timeout) as e:
             if attempt == retries - 1:
                 raise
             print(f"RETRY {type(e).__name__}, attempt {attempt + 1}, waiting {min(60, 5 * 2**attempt)}s")

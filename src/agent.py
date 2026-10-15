@@ -41,7 +41,7 @@ SYSTEM_PROMPT = load_prompt("trace_analyser_system")
 COMMON = load_common()
 
 
-async def analyser_agent(record, model, llm_args=None, max_steps=50):
+async def analyser_agent(record, model, llm_args=None, max_steps=50, response_format=True):
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": format_analyser_input(record, COMMON)},
@@ -62,7 +62,7 @@ async def analyser_agent(record, model, llm_args=None, max_steps=50):
             messages=messages,
             tools=[SEARCH_TOOL],
             tool_choice="none" if last_step else "auto",
-            response_format=AnalysisReport,
+            response_format=AnalysisReport if response_format else None,
             **params,
         )
         u = response.usage
@@ -87,7 +87,8 @@ async def analyser_agent(record, model, llm_args=None, max_steps=50):
             continue
 
         try:
-            report = AnalysisReport.model_validate_json(msg.content or "")
+            content = msg.content or ""
+            report = AnalysisReport.model_validate_json(content[content.find("{") : content.rfind("}") + 1])
         except ValidationError as e:
             messages.append({"role": "user", "content": f"Your report is not valid against the required schema:\n{e}\nReturn the corrected JSON report."})
             continue
