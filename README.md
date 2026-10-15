@@ -1,4 +1,4 @@
-# agent-judge-bench
+# support-agent-analyser-bench
 
 A benchmark for how well LLMs analyse customer-support agent trajectories.
 
